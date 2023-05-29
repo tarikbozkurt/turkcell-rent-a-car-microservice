@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.UUID;
 
 @Slf4j
-@Component()
+@Component
 public class PaymentClientFallback implements PaymentClient {
     @Override
     public void processRentalPayment(CreateRentalPaymentRequest request) {

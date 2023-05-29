@@ -2,9 +2,14 @@ package com.kodlamaio.rentalservice.business.concretes;
 
 import com.kodlamaio.commonpackage.events.rental.RentalCreatedEvent;
 import com.kodlamaio.commonpackage.events.rental.RentalDeletedEvent;
+import com.kodlamaio.commonpackage.utils.dto.CarInfoResponse;
+import com.kodlamaio.commonpackage.utils.dto.ChangeCarStateRequest;
 import com.kodlamaio.commonpackage.utils.dto.CreateRentalPaymentRequest;
+import com.kodlamaio.commonpackage.utils.enums.CarState;
 import com.kodlamaio.commonpackage.utils.kafka.producer.KafkaProducer;
 import com.kodlamaio.commonpackage.utils.mappers.ModelMapperService;
+import com.kodlamaio.rentalservice.api.clients.CarClient;
+import com.kodlamaio.rentalservice.api.clients.FilterClient;
 import com.kodlamaio.rentalservice.api.clients.PaymentClient;
 import com.kodlamaio.rentalservice.business.abstracts.RentalService;
 import com.kodlamaio.rentalservice.business.dto.requests.CreateRentalRequest;
@@ -20,6 +25,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +36,9 @@ public class RentalManager implements RentalService {
     private final ModelMapperService mapper;
     private final RentalBusinessRules rules;
     private final KafkaProducer producer;
-    private final PaymentClient client;
+    private final PaymentClient paymentClient;
+    private final CarClient carClient;
+    private final FilterClient filterClient;
 
     @Override
     public List<GetAllRentalsResponse> getAll() {
@@ -58,15 +66,34 @@ public class RentalManager implements RentalService {
         var rental = mapper.forRequest().map(request, Rental.class);
         rental.setId(null);
         rental.setTotalPrice(getTotalPrice(rental));
-        rental.setRentedAt(LocalDate.now());
+        rental.setRentedAt(LocalDateTime.now());
+
 
         CreateRentalPaymentRequest paymentRequest = new CreateRentalPaymentRequest();
         mapper.forRequest().map(request.getPaymentRequest(), paymentRequest);
         paymentRequest.setPrice(getTotalPrice(rental));
-        client.processRentalPayment(paymentRequest);
+        paymentClient.processRentalPayment(paymentRequest);
+
+        carClient.changeCarState(new ChangeCarStateRequest(request.getCarId(), CarState.Rented));
+        filterClient.changeCarState(new ChangeCarStateRequest(request.getCarId(),CarState.Rented));
 
         repository.save(rental);
-        sendKafkaRentalCreatedEvent(request.getCarId());
+
+        CarInfoResponse carInfoResponse = carClient.getCarInfo(request.getCarId());
+        RentalCreatedEvent rentalCreatedEvent = new RentalCreatedEvent(
+                rental.getId(),
+                paymentRequest.getCardHolder(),
+                carInfoResponse.getModelName(),
+                carInfoResponse.getBrandName(),
+                carInfoResponse.getPlate(),
+                carInfoResponse.getModelYear(),
+                rental.getDailyPrice(),
+                rental.getTotalPrice(),
+                rental.getRentedForDays(),
+                rental.getRentedAt()
+        );
+        producer.sendMessage(rentalCreatedEvent,"rental-created");
+
         var response = mapper.forResponse().map(rental, CreateRentalResponse.class);
 
         return response;
@@ -94,9 +121,6 @@ public class RentalManager implements RentalService {
         return rental.getDailyPrice() * rental.getRentedForDays();
     }
 
-    private void sendKafkaRentalCreatedEvent(UUID carId) {
-        producer.sendMessage(new RentalCreatedEvent(carId), "rental-created");
-    }
 
     private void sendKafkaRentalDeletedEvent(UUID id) {
         var carId = repository.findById(id).orElseThrow().getCarId();
