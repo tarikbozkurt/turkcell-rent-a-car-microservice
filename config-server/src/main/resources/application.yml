@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:/home/tarik/Desktop/config-servers/config-server-t1/ 
+      profile: dev 
+  profiles:
+    active: native
+server:
+  port: 8888
