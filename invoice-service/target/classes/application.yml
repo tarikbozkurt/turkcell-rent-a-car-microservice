@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: invoice-service
+  cloud:
+    config:
+      profile: dev
+  config:
+    import: configserver:http://localhost:8888
+  main:
+    allow-bean-definition-overriding: true
+  
+
