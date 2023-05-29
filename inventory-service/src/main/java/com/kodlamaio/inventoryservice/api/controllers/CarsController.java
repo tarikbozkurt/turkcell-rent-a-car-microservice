@@ -1,5 +1,6 @@
 package com.kodlamaio.inventoryservice.api.controllers;
 
+import com.kodlamaio.commonpackage.utils.dto.CarInfoResponse;
 import com.kodlamaio.commonpackage.utils.dto.ChangeCarStateRequest;
 import com.kodlamaio.commonpackage.utils.dto.ClientResponse;
 import com.kodlamaio.inventoryservice.business.abstracts.CarService;
@@ -58,5 +59,10 @@ public class CarsController {
     @PutMapping("/change-car-state")
     public void changeCarState(@RequestBody ChangeCarStateRequest request) {
         service.changeStateByCarId(request.getCarId(), request.getCarState());
+    }
+
+    @GetMapping("/getCarInfo/{id}")
+    public CarInfoResponse getCarInfo(@PathVariable UUID id){
+        return service.getCarInfo(id);
     }
 }

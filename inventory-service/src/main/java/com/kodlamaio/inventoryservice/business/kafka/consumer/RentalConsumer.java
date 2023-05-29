@@ -1,6 +1,5 @@
 package com.kodlamaio.inventoryservice.business.kafka.consumer;
 
-import com.kodlamaio.commonpackage.events.rental.RentalCreatedEvent;
 import com.kodlamaio.commonpackage.events.rental.RentalDeletedEvent;
 import com.kodlamaio.commonpackage.utils.enums.CarState;
 import com.kodlamaio.inventoryservice.business.abstracts.CarService;
@@ -14,15 +13,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RentalConsumer {
     private final CarService service;
-
-    @KafkaListener(
-            topics = "rental-created",
-            groupId = "inventory-rental-create"
-    )
-    public void consume(RentalCreatedEvent event) {
-        service.changeStateByCarId(event.getCarId(), CarState.Rented);
-        log.info("Rental created event consumed {}", event);
-    }
 
     @KafkaListener(
             topics = "rental-deleted",
