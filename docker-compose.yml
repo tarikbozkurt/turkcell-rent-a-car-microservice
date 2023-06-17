@@ -8,6 +8,49 @@ services:
       - "9092:9092"
     volumes:
       - kafka_data:/opt/kafka/kafka-logs
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-t1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    command: start-dev
+    volumes:
+      - .:/opt/jboss/keycloak/imports
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin-t1
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus-t1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana-t1
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_config:/etc/grafana
+    networks:
+      - monitor-net
 
   mongodb:
     container_name: turkcell-mongodb
@@ -40,8 +83,15 @@ services:
     volumes:
       - postgresqldb_data:/data/db/postgresql
 
+
+networks:
+  monitor-net:
+    driver: bridge
+
 volumes:
   kafka_data:
   mongodb_data:
   mysqldb_data:
   postgresqldb_data:
+  grafana_data:
+  grafana_config:
